@@ -109,7 +109,7 @@ Body 示例（最简）：
 {
   "url": "http://192.168.18.119:1880/static/",
   "basic_user": "admin",
-  "basic_pass": "cre@admin"
+  "basic_pass": "admin"
 }
 ```
 
