@@ -55,6 +55,48 @@ $env:RELEASE_KEY_PASSWORD = "******"
 
 - `app/build/outputs/apk/release/app-release.apk`
 
+## GitHub Actions 自动构建 APK
+
+项目已集成 GitHub Actions 工作流（`.github/workflows/build.yml`），实现 **Push 自动构建 + Tag 自动发布 Release**。
+
+### 触发时机
+
+| 事件 | 行为 |
+|---|---|
+| Push 到 `main` / `master` | 构建 Release APK，上传为 Artifact（保留 30 天） |
+| 提交 PR 到 `main` / `master` | 构建验证，确保代码可正常编译 |
+| 推送 `v*` 格式的 Tag | 构建 APK 并**自动创建 GitHub Release**，附带 APK 下载 |
+
+### 配置签名 Secrets
+
+在 GitHub 仓库的 **Settings → Secrets and variables → Actions** 中添加以下 4 个 Secret：
+
+| Secret 名称 | 说明 |
+|---|---|
+| `KEYSTORE_BASE64` | keystore 文件的 Base64 编码内容（见下方生成命令） |
+| `KEYSTORE_PASSWORD` | keystore 密码（对应 `RELEASE_STORE_PASSWORD`） |
+| `KEY_ALIAS` | key 别名（对应 `RELEASE_KEY_ALIAS`） |
+| `KEY_PASSWORD` | key 密码（对应 `RELEASE_KEY_PASSWORD`） |
+
+**生成 `KEYSTORE_BASE64`（PowerShell）：**
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\path\to\your.jks")) | Set-Clipboard
+```
+
+> **注意**：若不配置 Secrets，工作流仍会运行，但构建产物为未签名包（`app-release-unsigned.apk`），无法直接安装。
+
+### 发布新版本
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+推送 Tag 后，Actions 自动构建并在 Releases 页面发布带 APK 附件的版本。
+
+---
+
 ## 本地 HTTP API（给服务端/中控调用）
 
 设备在局域网内固定监听：
