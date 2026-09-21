@@ -11,7 +11,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.netcontrol"
+        // 商店包名不可使用 com.example.*（小米等商店会拒）
+        applicationId = "com.c3812600.netcontrol"
         minSdk = 23
         targetSdk = 36
         versionCode = 4
@@ -20,10 +21,23 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    val ksPath = (System.getenv("RELEASE_STORE_FILE") ?: (project.findProperty("RELEASE_STORE_FILE") as String?))?.ifBlank { null }
-    val ksPass = (System.getenv("RELEASE_STORE_PASSWORD") ?: (project.findProperty("RELEASE_STORE_PASSWORD") as String?))?.ifBlank { null }
-    val keyAlias = (System.getenv("RELEASE_KEY_ALIAS") ?: (project.findProperty("RELEASE_KEY_ALIAS") as String?))?.ifBlank { null }
-    val keyPass = (System.getenv("RELEASE_KEY_PASSWORD") ?: (project.findProperty("RELEASE_KEY_PASSWORD") as String?))?.ifBlank { null }
+    val keystoreProps = java.util.Properties()
+    val keystorePropsFile = rootProject.file("keystore.properties")
+    if (keystorePropsFile.exists()) {
+        keystorePropsFile.inputStream().use { keystoreProps.load(it) }
+    }
+    fun signProp(envKey: String, propKey: String): String? {
+        val fromEnv = System.getenv(envKey)?.ifBlank { null }
+        if (fromEnv != null) return fromEnv
+        val fromGradle = (project.findProperty(envKey) as String?)?.ifBlank { null }
+        if (fromGradle != null) return fromGradle
+        return keystoreProps.getProperty(propKey)?.ifBlank { null }
+    }
+
+    val ksPath = signProp("RELEASE_STORE_FILE", "storeFile")
+    val ksPass = signProp("RELEASE_STORE_PASSWORD", "storePassword")
+    val keyAlias = signProp("RELEASE_KEY_ALIAS", "keyAlias")
+    val keyPass = signProp("RELEASE_KEY_PASSWORD", "keyPassword")
 
     signingConfigs {
         if (ksPath != null && ksPass != null && keyAlias != null && keyPass != null) {

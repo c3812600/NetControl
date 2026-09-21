@@ -43,6 +43,8 @@ NetControl 是一款基于 Android 原生开发的轻量级局域网网页展示
 - Android：minSdk 23（Android 6.0+）
 - JDK：建议 17（本项目本机打包使用 JDK 17）
 - Android Studio / Android SDK（可用命令行 Gradle 构建）
+- **商店包名**：`com.c3812600.netcontrol`（小米等商店不可使用 `com.example.*`）
+- **发布签名**：本机 `keystore.properties` + `app/release/*.jks`（Git 已忽略）；或 GitHub Secrets `KEYSTORE_*`
 
 ## 构建与安装
 
