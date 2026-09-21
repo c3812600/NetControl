@@ -12,6 +12,9 @@ on:
       - main
       - master
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build APK
@@ -70,7 +73,7 @@ jobs:
             直接下载下方 APK 安装即可（Debug 版本）。
 
             ### 更新日志
-            ${{ github.event.head_commit.message }}
+            ${{ github.event.head_commit.message || '见提交说明' }}
           files: app/build/outputs/apk/debug/${{ env.APK_NAME }}
           draft: false
           prerelease: false

@@ -194,9 +194,9 @@ public class MainActivity extends Activity {
             if (c < 128) {
                 sb.append(c);
             } else {
-                byte[] bytes = String.valueOf(c).getBytes("UTF-8");
-                for (int bi = 0; bi < bytes.length; bi++) {
-                    sb.append(String.format("%%%02X", bytes[bi] & 0xFF));
+                byte[] bytes = String.valueOf(c).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                for (byte b : bytes) {
+                    sb.append(String.format("%%%02X", b & 0xFF));
                 }
             }
         }
