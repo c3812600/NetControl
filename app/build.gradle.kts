@@ -2,6 +2,43 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
+val releaseSignProps = java.util.Properties().apply {
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) {
+        f.inputStream().use { load(it) }
+    }
+}
+
+val releaseStoreFile = listOfNotNull(
+    System.getenv("RELEASE_STORE_FILE"),
+    project.findProperty("RELEASE_STORE_FILE") as String?,
+    releaseSignProps.getProperty("storeFile")
+).map { it.trim() }.firstOrNull { it.isNotEmpty() }
+
+val releaseStorePassword = listOfNotNull(
+    System.getenv("RELEASE_STORE_PASSWORD"),
+    project.findProperty("RELEASE_STORE_PASSWORD") as String?,
+    releaseSignProps.getProperty("storePassword")
+).map { it.trim() }.firstOrNull { it.isNotEmpty() }
+
+val releaseKeyAlias = listOfNotNull(
+    System.getenv("RELEASE_KEY_ALIAS"),
+    project.findProperty("RELEASE_KEY_ALIAS") as String?,
+    releaseSignProps.getProperty("keyAlias")
+).map { it.trim() }.firstOrNull { it.isNotEmpty() }
+
+val releaseKeyPassword = listOfNotNull(
+    System.getenv("RELEASE_KEY_PASSWORD"),
+    project.findProperty("RELEASE_KEY_PASSWORD") as String?,
+    releaseSignProps.getProperty("keyPassword")
+).map { it.trim() }.firstOrNull { it.isNotEmpty() }
+
+val canSignRelease = releaseStoreFile != null
+        && project.file(releaseStoreFile).exists()
+        && releaseStorePassword != null
+        && releaseKeyAlias != null
+        && releaseKeyPassword != null
+
 android {
     namespace = "com.example.netcontrol"
     compileSdk {
@@ -21,31 +58,13 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    val keystoreProps = java.util.Properties()
-    val keystorePropsFile = rootProject.file("keystore.properties")
-    if (keystorePropsFile.exists()) {
-        keystorePropsFile.inputStream().use { keystoreProps.load(it) }
-    }
-    fun signProp(envKey: String, propKey: String): String? {
-        val fromEnv = System.getenv(envKey)?.ifBlank { null }
-        if (fromEnv != null) return fromEnv
-        val fromGradle = (project.findProperty(envKey) as String?)?.ifBlank { null }
-        if (fromGradle != null) return fromGradle
-        return keystoreProps.getProperty(propKey)?.ifBlank { null }
-    }
-
-    val ksPath = signProp("RELEASE_STORE_FILE", "storeFile")
-    val ksPass = signProp("RELEASE_STORE_PASSWORD", "storePassword")
-    val keyAlias = signProp("RELEASE_KEY_ALIAS", "keyAlias")
-    val keyPass = signProp("RELEASE_KEY_PASSWORD", "keyPassword")
-
     signingConfigs {
-        if (ksPath != null && ksPass != null && keyAlias != null && keyPass != null) {
+        if (canSignRelease) {
             create("release") {
-                storeFile = file(ksPath)
-                storePassword = ksPass
-                this.keyAlias = keyAlias
-                keyPassword = keyPass
+                storeFile = project.file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
                 enableV1Signing = true
                 enableV2Signing = true
                 enableV3Signing = true
@@ -61,11 +80,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            if (signingConfigs.findByName("release") != null) {
+            if (canSignRelease) {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
