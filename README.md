@@ -10,8 +10,16 @@ NetControl 是一款基于 Android 原生开发的轻量级局域网网页展示
 - 支持需要登录弹窗的网页（HTTP Basic Auth）
 - 支持首次主文档请求附带自定义请求头（headers）
 - 本地 HTTP API 支持 CORS 跨域，便于局域网中控网页扫描设备、下发 URL
+- **按需刷新**：`GET/POST /api/refresh`，网页内容更新后由中控触发重新加载（无定时自动刷新）
 
 ## 版本记录
+
+### v1.3（versionCode 4）
+
+- **刷新接口**：新增 `GET /api/refresh`、`POST /api/refresh`
+  - 默认重新加载当前 URL
+  - `clear_cache=1` 或 body `{"clear_cache":true}` 时先清 WebView 缓存再加载（适合局域网静态页更新）
+- **设计说明**：不提供定时自动刷新，避免打断展示；由中控按需调用
 
 ### v1.2（versionCode 3）
 
@@ -199,6 +207,31 @@ Body 示例（最简）：
 }
 ```
 
+### 3) 按需刷新页面：GET/POST /api/refresh（v1.3+）
+
+网页内容更新后由中控触发，**无定时自动刷新**。
+
+请求：
+
+- `GET http://<设备IP>:8080/api/refresh`
+- `GET http://<设备IP>:8080/api/refresh?clear_cache=1`（先清 WebView 缓存再加载）
+- `POST http://<设备IP>:8080/api/refresh`  
+  Body 可选：`{"clear_cache": true}`
+
+返回（200）示例：
+
+```json
+{
+  "code": 200,
+  "msg": "refreshing",
+  "data": {
+    "refreshed": true,
+    "clear_cache": false,
+    "current_url": "http://192.168.1.100/display1.html"
+  }
+}
+```
+
 ### curl 调用示例（Windows）
 
 PowerShell 中建议使用 `curl.exe`：
@@ -206,6 +239,8 @@ PowerShell 中建议使用 `curl.exe`：
 ```powershell
 curl.exe "http://192.168.1.105:8080/api/status"
 curl.exe -X POST "http://192.168.1.105:8080/api/set_url" -H "Content-Type: application/json" -d "{\"url\":\"http://192.168.1.100/new_dashboard.html\"}"
+curl.exe "http://192.168.1.105:8080/api/refresh"
+curl.exe "http://192.168.1.105:8080/api/refresh?clear_cache=1"
 ```
 
 ## 运行逻辑（简述）
@@ -214,6 +249,7 @@ curl.exe -X POST "http://192.168.1.105:8080/api/set_url" -H "Content-Type: appli
 - 若本地无历史 URL：显示“等待主机下发指令…”
 - 启动本地 HTTP 服务监听 8080
 - 收到 `/api/set_url`：保存 URL 并在 UI 线程加载，重启后自动恢复
+- 收到 `/api/refresh`：按需重新加载当前 URL（可选清缓存）
 
 ## 图标
 

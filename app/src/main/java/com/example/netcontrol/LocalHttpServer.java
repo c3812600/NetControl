@@ -17,6 +17,8 @@ public class LocalHttpServer extends NanoHTTPD {
 
     public interface UiController {
         void setUrl(String url, Map<String, String> headers, String basicUser, String basicPass);
+        /** 按需刷新当前页面；clearCache 为 true 时先清 WebView 缓存 */
+        void reloadPage(boolean clearCache);
         String getCurrentUrl();
         String getScreenResolution();
         boolean isFullscreen();
@@ -44,6 +46,10 @@ public class LocalHttpServer extends NanoHTTPD {
         }
         if (method == Method.POST && "/api/set_url".equals(uri)) {
             return withCors(handleSetUrl(session));
+        }
+        // 按需刷新：局域网网页更新后由中控调用，不使用定时自动刷新
+        if ((method == Method.GET || method == Method.POST) && "/api/refresh".equals(uri)) {
+            return withCors(handleRefresh(session, method));
         }
         return withCors(json(Response.Status.NOT_FOUND, "{\"code\":404,\"msg\":\"not found\",\"data\":null}"));
     }
@@ -78,6 +84,51 @@ public class LocalHttpServer extends NanoHTTPD {
             return json(Response.Status.OK, res.toString());
         } catch (JSONException e) {
             return json(Response.Status.INTERNAL_ERROR, "{\"code\":500,\"msg\":\"error\",\"data\":null}");
+        }
+    }
+
+    /**
+     * GET  /api/refresh              — 重新加载当前 URL
+     * GET  /api/refresh?clear_cache=1
+     * POST /api/refresh  {"clear_cache":true}
+     */
+    private Response handleRefresh(IHTTPSession session, Method method) {
+        try {
+            boolean clearCache = false;
+            if (method == Method.GET) {
+                Map<String, String> params = session.getParms();
+                String q = params == null ? null : params.get("clear_cache");
+                clearCache = q != null && ("1".equals(q) || "true".equalsIgnoreCase(q) || "yes".equalsIgnoreCase(q));
+            } else {
+                String body = readBodyUtf8(session);
+                if (body != null && !body.trim().isEmpty()) {
+                    try {
+                        JSONObject obj = new JSONObject(body);
+                        clearCache = obj.optBoolean("clear_cache", false);
+                    } catch (Exception ignored) {
+                        String q = session.getParms() != null ? session.getParms().get("clear_cache") : null;
+                        clearCache = q != null && ("1".equals(q) || "true".equalsIgnoreCase(q));
+                    }
+                } else {
+                    Map<String, String> params = session.getParms();
+                    String q = params == null ? null : params.get("clear_cache");
+                    clearCache = q != null && ("1".equals(q) || "true".equalsIgnoreCase(q));
+                }
+            }
+            String before = ui.getCurrentUrl();
+            ui.reloadPage(clearCache);
+            JSONObject data = new JSONObject();
+            data.put("refreshed", true);
+            data.put("clear_cache", clearCache);
+            data.put("current_url", before);
+            JSONObject res = new JSONObject();
+            res.put("code", 200);
+            res.put("msg", clearCache ? "refreshing with cache clear" : "refreshing");
+            res.put("data", data);
+            return json(Response.Status.OK, res.toString());
+        } catch (Exception e) {
+            String msg = e.getMessage() == null ? "error" : e.getMessage().replace("\"", "'");
+            return json(Response.Status.INTERNAL_ERROR, "{\"code\":500,\"msg\":\"" + msg + "\",\"data\":null}");
         }
     }
 

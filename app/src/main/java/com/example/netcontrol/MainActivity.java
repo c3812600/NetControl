@@ -122,6 +122,25 @@ public class MainActivity extends Activity {
             }
 
             @Override
+            public void reloadPage(final boolean clearCache) {
+                runOnUiThread(() -> {
+                    if (clearCache) {
+                        try {
+                            webView.clearCache(true);
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    String url = currentUrl;
+                    if (url != null && !url.isEmpty()) {
+                        webView.loadUrl(url);
+                    } else {
+                        webView.reload();
+                    }
+                    applyImmersiveMode();
+                });
+            }
+
+            @Override
             public String getCurrentUrl() {
                 return currentUrl == null ? "" : currentUrl;
             }
