@@ -28,13 +28,31 @@ public class LocalHttpServer extends NanoHTTPD {
     public Response serve(IHTTPSession session) {
         String uri = session.getUri();
         Method method = session.getMethod();
+
+        // 浏览器跨域预检（POST + application/json 会先发 OPTIONS）
+        if (method == Method.OPTIONS) {
+            return withCors(NanoHTTPD.newFixedLengthResponse(Response.Status.NO_CONTENT, "text/plain", ""));
+        }
+
         if (method == Method.GET && "/api/status".equals(uri)) {
-            return handleStatus();
+            return withCors(handleStatus());
         }
         if (method == Method.POST && "/api/set_url".equals(uri)) {
-            return handleSetUrl(session);
+            return withCors(handleSetUrl(session));
         }
-        return NanoHTTPD.newFixedLengthResponse(Response.Status.NOT_FOUND, "application/json", "{\"code\":404,\"msg\":\"not found\",\"data\":null}");
+        return withCors(NanoHTTPD.newFixedLengthResponse(
+                Response.Status.NOT_FOUND,
+                "application/json",
+                "{\"code\":404,\"msg\":\"not found\",\"data\":null}"));
+    }
+
+    /** 所有响应统一带上 CORS 头，供局域网中控网页跨域调用 */
+    private Response withCors(Response r) {
+        r.addHeader("Access-Control-Allow-Origin", "*");
+        r.addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        r.addHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+        r.addHeader("Access-Control-Max-Age", "86400");
+        return r;
     }
 
     private Response handleStatus() {
@@ -69,7 +87,7 @@ public class LocalHttpServer extends NanoHTTPD {
             Map<String, String> headers = new HashMap<>();
             if (obj.has("headers")) {
                 JSONObject h = obj.getJSONObject("headers");
-                for (java.util.Iterator<String> it = h.keys(); it.hasNext();) {
+                for (java.util.Iterator<String> it = h.keys(); it.hasNext(); ) {
                     String k = it.next();
                     headers.put(k, h.optString(k, ""));
                 }

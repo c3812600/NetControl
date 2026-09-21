@@ -9,6 +9,20 @@ NetControl 是一款基于 Android 原生开发的轻量级局域网网页展示
 - 断电/重启后自动恢复上一次下发的 URL（SharedPreferences 持久化）
 - 支持需要登录弹窗的网页（HTTP Basic Auth）
 - 支持首次主文档请求附带自定义请求头（headers）
+- 本地 HTTP API 支持 CORS 跨域，便于局域网中控网页扫描设备、下发 URL
+
+## 版本记录
+
+### v1.1（versionCode 2）
+
+- **CORS**：`LocalHttpServer` 所有 HTTP 响应增加 `Access-Control-Allow-Origin: *` 等响应头
+- **预检**：支持 `OPTIONS` 跨域预检（`POST /api/set_url` + `application/json` 必需）
+- **说明**：README 补充跨域说明与版本记录；`versionName` 升至 `1.1`
+- **用途**：局域网 Web 中控台（浏览器）可直接 `GET /api/status`、`POST /api/set_url`，不再被 CORS 拦截
+
+### v1.0
+
+- 首版：全屏 WebView、本地 `:8080` API、URL 持久化、Basic Auth / 自定义请求头
 
 ## 环境要求
 
@@ -102,6 +116,8 @@ git push origin v1.0.0
 设备在局域网内固定监听：
 
 - `http://<设备IP>:8080`
+
+> **CORS（v1.1+）**：响应统一带 `Access-Control-Allow-Origin: *`，并处理 `OPTIONS` 预检。浏览器中控页可跨域扫描设备、下发 URL；`curl` / 服务端调用不受影响。
 
 ### 1) 设备在线查询：GET /api/status
 
