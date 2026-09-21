@@ -2,42 +2,33 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
-val releaseSignProps = java.util.Properties().apply {
-    val f = rootProject.file("keystore.properties")
-    if (f.exists()) {
-        f.inputStream().use { load(it) }
-    }
+val signProps = java.util.Properties()
+val signPropsFile = rootProject.file("keystore.properties")
+if (signPropsFile.exists()) {
+    signPropsFile.inputStream().use { signProps.load(it) }
 }
 
-val releaseStoreFile = listOfNotNull(
-    System.getenv("RELEASE_STORE_FILE"),
-    project.findProperty("RELEASE_STORE_FILE") as String?,
-    releaseSignProps.getProperty("storeFile")
-).map { it.trim() }.firstOrNull { it.isNotEmpty() }
-
-val releaseStorePassword = listOfNotNull(
-    System.getenv("RELEASE_STORE_PASSWORD"),
-    project.findProperty("RELEASE_STORE_PASSWORD") as String?,
-    releaseSignProps.getProperty("storePassword")
-).map { it.trim() }.firstOrNull { it.isNotEmpty() }
-
-val releaseKeyAlias = listOfNotNull(
-    System.getenv("RELEASE_KEY_ALIAS"),
-    project.findProperty("RELEASE_KEY_ALIAS") as String?,
-    releaseSignProps.getProperty("keyAlias")
-).map { it.trim() }.firstOrNull { it.isNotEmpty() }
-
-val releaseKeyPassword = listOfNotNull(
-    System.getenv("RELEASE_KEY_PASSWORD"),
-    project.findProperty("RELEASE_KEY_PASSWORD") as String?,
-    releaseSignProps.getProperty("keyPassword")
-).map { it.trim() }.firstOrNull { it.isNotEmpty() }
-
-val canSignRelease = releaseStoreFile != null
-        && project.file(releaseStoreFile).exists()
-        && releaseStorePassword != null
-        && releaseKeyAlias != null
-        && releaseKeyPassword != null
+// 读取顺序：环境变量 → -P 属性 → keystore.properties
+val ksPathRaw: String? = (
+    System.getenv("RELEASE_STORE_FILE")
+        ?: (project.findProperty("RELEASE_STORE_FILE") as String?)
+        ?: signProps.getProperty("storeFile")
+    )?.trim()?.ifEmpty { null }
+val ksPassRaw: String? = (
+    System.getenv("RELEASE_STORE_PASSWORD")
+        ?: (project.findProperty("RELEASE_STORE_PASSWORD") as String?)
+        ?: signProps.getProperty("storePassword")
+    )?.trim()?.ifEmpty { null }
+val keyAliasRaw: String? = (
+    System.getenv("RELEASE_KEY_ALIAS")
+        ?: (project.findProperty("RELEASE_KEY_ALIAS") as String?)
+        ?: signProps.getProperty("keyAlias")
+    )?.trim()?.ifEmpty { null }
+val keyPassRaw: String? = (
+    System.getenv("RELEASE_KEY_PASSWORD")
+        ?: (project.findProperty("RELEASE_KEY_PASSWORD") as String?)
+        ?: signProps.getProperty("keyPassword")
+    )?.trim()?.ifEmpty { null }
 
 android {
     namespace = "com.example.netcontrol"
@@ -48,7 +39,6 @@ android {
     }
 
     defaultConfig {
-        // 商店包名不可使用 com.example.*（小米等商店会拒）
         applicationId = "com.c3812600.netcontrol"
         minSdk = 23
         targetSdk = 36
@@ -59,12 +49,16 @@ android {
     }
 
     signingConfigs {
-        if (canSignRelease) {
+        val storePath = ksPathRaw
+        val storePass = ksPassRaw
+        val alias = keyAliasRaw
+        val keyPass = keyPassRaw
+        if (storePath != null && storePass != null && alias != null && keyPass != null && project.file(storePath).exists()) {
             create("release") {
-                storeFile = project.file(releaseStoreFile!!)
-                storePassword = releaseStorePassword
-                keyAlias = releaseKeyAlias
-                keyPassword = releaseKeyPassword
+                storeFile = project.file(storePath)
+                storePassword = storePass
+                this.keyAlias = alias
+                this.keyPassword = keyPass
                 enableV1Signing = true
                 enableV2Signing = true
                 enableV3Signing = true
@@ -80,12 +74,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            if (canSignRelease) {
+            if (signingConfigs.findByName("release") != null) {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
     }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
