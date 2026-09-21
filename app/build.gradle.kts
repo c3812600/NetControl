@@ -21,10 +21,17 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    val ksPath = (System.getenv("RELEASE_STORE_FILE") ?: (project.findProperty("RELEASE_STORE_FILE") as String?))?.ifBlank { null }
-    val ksPass = (System.getenv("RELEASE_STORE_PASSWORD") ?: (project.findProperty("RELEASE_STORE_PASSWORD") as String?))?.ifBlank { null }
-    val keyAlias = (System.getenv("RELEASE_KEY_ALIAS") ?: (project.findProperty("RELEASE_KEY_ALIAS") as String?))?.ifBlank { null }
-    val keyPass = (System.getenv("RELEASE_KEY_PASSWORD") ?: (project.findProperty("RELEASE_KEY_PASSWORD") as String?))?.ifBlank { null }
+    // 可选：本地 keystore.properties（CI 上文件不存在则忽略）
+    val ksFileProps = java.util.Properties()
+    val ksFile = rootProject.file("keystore.properties")
+    if (ksFile.exists()) {
+        ksFile.inputStream().use { ksFileProps.load(it) }
+    }
+
+    val ksPath = (System.getenv("RELEASE_STORE_FILE") ?: (project.findProperty("RELEASE_STORE_FILE") as String?) ?: ksFileProps.getProperty("storeFile"))?.ifBlank { null }
+    val ksPass = (System.getenv("RELEASE_STORE_PASSWORD") ?: (project.findProperty("RELEASE_STORE_PASSWORD") as String?) ?: ksFileProps.getProperty("storePassword"))?.ifBlank { null }
+    val keyAlias = (System.getenv("RELEASE_KEY_ALIAS") ?: (project.findProperty("RELEASE_KEY_ALIAS") as String?) ?: ksFileProps.getProperty("keyAlias"))?.ifBlank { null }
+    val keyPass = (System.getenv("RELEASE_KEY_PASSWORD") ?: (project.findProperty("RELEASE_KEY_PASSWORD") as String?) ?: ksFileProps.getProperty("keyPassword"))?.ifBlank { null }
 
     signingConfigs {
         if (ksPath != null && ksPass != null && keyAlias != null && keyPass != null) {
