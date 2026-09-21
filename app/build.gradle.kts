@@ -2,34 +2,6 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
-val signProps = java.util.Properties()
-val signPropsFile = rootProject.file("keystore.properties")
-if (signPropsFile.exists()) {
-    signPropsFile.inputStream().use { signProps.load(it) }
-}
-
-// 读取顺序：环境变量 → -P 属性 → keystore.properties
-val ksPathRaw: String? = (
-    System.getenv("RELEASE_STORE_FILE")
-        ?: (project.findProperty("RELEASE_STORE_FILE") as String?)
-        ?: signProps.getProperty("storeFile")
-    )?.trim()?.ifEmpty { null }
-val ksPassRaw: String? = (
-    System.getenv("RELEASE_STORE_PASSWORD")
-        ?: (project.findProperty("RELEASE_STORE_PASSWORD") as String?)
-        ?: signProps.getProperty("storePassword")
-    )?.trim()?.ifEmpty { null }
-val keyAliasRaw: String? = (
-    System.getenv("RELEASE_KEY_ALIAS")
-        ?: (project.findProperty("RELEASE_KEY_ALIAS") as String?)
-        ?: signProps.getProperty("keyAlias")
-    )?.trim()?.ifEmpty { null }
-val keyPassRaw: String? = (
-    System.getenv("RELEASE_KEY_PASSWORD")
-        ?: (project.findProperty("RELEASE_KEY_PASSWORD") as String?)
-        ?: signProps.getProperty("keyPassword")
-    )?.trim()?.ifEmpty { null }
-
 android {
     namespace = "com.example.netcontrol"
     compileSdk {
@@ -39,6 +11,7 @@ android {
     }
 
     defaultConfig {
+        // 商店包名：避免 com.example.*
         applicationId = "com.c3812600.netcontrol"
         minSdk = 23
         targetSdk = 36
@@ -48,17 +21,18 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    val ksPath = (System.getenv("RELEASE_STORE_FILE") ?: (project.findProperty("RELEASE_STORE_FILE") as String?))?.ifBlank { null }
+    val ksPass = (System.getenv("RELEASE_STORE_PASSWORD") ?: (project.findProperty("RELEASE_STORE_PASSWORD") as String?))?.ifBlank { null }
+    val keyAlias = (System.getenv("RELEASE_KEY_ALIAS") ?: (project.findProperty("RELEASE_KEY_ALIAS") as String?))?.ifBlank { null }
+    val keyPass = (System.getenv("RELEASE_KEY_PASSWORD") ?: (project.findProperty("RELEASE_KEY_PASSWORD") as String?))?.ifBlank { null }
+
     signingConfigs {
-        val storePath = ksPathRaw
-        val storePass = ksPassRaw
-        val alias = keyAliasRaw
-        val keyPass = keyPassRaw
-        if (storePath != null && storePass != null && alias != null && keyPass != null && project.file(storePath).exists()) {
+        if (ksPath != null && ksPass != null && keyAlias != null && keyPass != null) {
             create("release") {
-                storeFile = project.file(storePath)
-                storePassword = storePass
-                this.keyAlias = alias
-                this.keyPassword = keyPass
+                storeFile = file(ksPath)
+                storePassword = ksPass
+                this.keyAlias = keyAlias
+                keyPassword = keyPass
                 enableV1Signing = true
                 enableV2Signing = true
                 enableV3Signing = true
