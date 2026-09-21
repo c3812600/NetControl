@@ -98,24 +98,26 @@ public class MainActivity extends Activity {
                             ed.apply();
                         }
                     }
+                    final String loadUrl = percentEncodeNonAscii(url);
                     if (headers != null && !headers.isEmpty()) {
                         Map<String, String> h = new HashMap<>(headers);
                         if (basicUser != null && basicPass != null && !h.containsKey("Authorization")) {
                             String token = Base64.encodeToString((basicUser + ":" + basicPass).getBytes(), Base64.NO_WRAP);
                             h.put("Authorization", "Basic " + token);
                         }
-                        webView.loadUrl(url, h);
+                        webView.loadUrl(loadUrl, h);
                     } else {
                         if (basicUser != null && basicPass != null) {
                             Map<String, String> h = new HashMap<>();
                             String token = Base64.encodeToString((basicUser + ":" + basicPass).getBytes(), Base64.NO_WRAP);
                             h.put("Authorization", "Basic " + token);
-                            webView.loadUrl(url, h);
+                            webView.loadUrl(loadUrl, h);
                         } else {
-                            webView.loadUrl(url);
+                            webView.loadUrl(loadUrl);
                         }
                     }
-                    prefs.edit().putString("last_url", url).apply();
+                    currentUrl = loadUrl;
+                    prefs.edit().putString("last_url", loadUrl).apply();
                 });
             }
 
@@ -171,6 +173,34 @@ public class MainActivity extends Activity {
                 | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                 | View.SYSTEM_UI_FLAG_FULLSCREEN;
         decor.setSystemUiVisibility(flags);
+    }
+
+    /** 将 URL 中的非 ASCII 字符按 UTF-8 百分号编码，避免中文路径加载失败或显示为 '?' */
+    private String percentEncodeNonAscii(String raw) {
+        if (raw == null) return "";
+        boolean hasNonAscii = false;
+        for (int i = 0; i < raw.length(); i++) {
+            if (raw.charAt(i) > 127) {
+                hasNonAscii = true;
+                break;
+            }
+        }
+        if (!hasNonAscii) {
+            return raw;
+        }
+        StringBuilder sb = new StringBuilder(raw.length() + 16);
+        for (int i = 0; i < raw.length(); i++) {
+            char c = raw.charAt(i);
+            if (c < 128) {
+                sb.append(c);
+            } else {
+                byte[] bytes = String.valueOf(c).getBytes("UTF-8");
+                for (int bi = 0; bi < bytes.length; bi++) {
+                    sb.append(String.format("%%%02X", bytes[bi] & 0xFF));
+                }
+            }
+        }
+        return sb.toString();
     }
 
     private String getLocalIpv4() {

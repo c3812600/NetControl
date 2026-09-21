@@ -13,6 +13,12 @@ NetControl 是一款基于 Android 原生开发的轻量级局域网网页展示
 
 ## 版本记录
 
+### v1.2（versionCode 3）
+
+- **Chrome 私网**：CORS 增加 `Access-Control-Allow-Private-Network: true`，修复本机网页 → 局域网设备 `POST /api/set_url` 出现 `ERR_INVALID_HTTP_RESPONSE` / 预检失败
+- **中文 URL**：POST body 与 JSON 响应强制 UTF-8；`LocalHttpServer` / `MainActivity` 对非 ASCII URL 做百分号编码，避免路径里的中文变成 `?`
+- **POST 更稳**：优先按 ISO-8859-1→UTF-8 恢复 NanoHTTPD body，读流失败时回退 Content-Length 读取
+
 ### v1.1（versionCode 2）
 
 - **CORS**：`LocalHttpServer` 所有 HTTP 响应增加 `Access-Control-Allow-Origin: *` 等响应头
