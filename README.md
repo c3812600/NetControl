@@ -70,6 +70,15 @@ Release 签名通过环境变量或 Gradle 属性注入（仓库默认忽略 key
 - `RELEASE_KEY_ALIAS`
 - `RELEASE_KEY_PASSWORD`
 
+**本地一键签名打包（推荐）**：仓库根目录已有 `keystore.properties` + `app/release/*.jks` 时：
+
+```powershell
+cd NetControl
+.\build-release.ps1
+```
+
+脚本会读取 `keystore.properties` 并注入上述环境变量后执行 `assembleRelease`。
+
 示例（PowerShell）：
 
 ```powershell
